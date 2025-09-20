@@ -9,7 +9,7 @@
     });
     return q;
   }
-  function loadJSON(path){ return fetch(path).then(r=>r.json()); }
+  function loadJSON(path){ return fetch(path, { cache: 'no-store' }).then(r=>r.json()); }
 
   function isOpenNow(hours, now=new Date()){
     try{
