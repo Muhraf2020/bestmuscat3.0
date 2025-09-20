@@ -102,7 +102,7 @@
     const q = parseQuery();
     if (!q.slug) return;
     loadJSON('data/tools.json').then(rows => {
-      const place = rows.find(p => p.slug === q.slug);
+      const place = rows.find(p => p.slug === q.slug || p.id === q.slug);
       if (!place) return;
       injectJSONLD(place);
       renderDetailExtras(place);
