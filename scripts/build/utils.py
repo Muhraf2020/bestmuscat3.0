@@ -2,6 +2,7 @@ import json, os, re, unicodedata, math
 from pathlib import Path
 from slugify import slugify as _slugify
 
+# Paths (relative to repo)
 ROOT = Path(__file__).resolve().parents[2]  # repo root
 DATA_DIR = ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -10,21 +11,22 @@ MEDIA_DIR = DATA_DIR / "media"
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 RAW_DIR.mkdir(parents=True, exist_ok=True)
 
-# --- Slug logic (stable across rebuilds) ---
+# Slug logic
 def slugify(name: str) -> str:
     s = unicodedata.normalize("NFKC", (name or "").strip())
     return _slugify(s, lowercase=True, separator="-")
 
-# --- Geo distance (meters) ---
+# Geo distance (meters)
 def haversine_m(lat1, lon1, lat2, lon2):
     R = 6371000.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
-    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-    return 2*R*math.asin(math.sqrt(a))
+    from math import radians, sin, cos, asin, sqrt
+    phi1, phi2 = radians(lat1), radians(lat2)
+    dphi = radians(lat2 - lat1)
+    dlambda = radians(lon2 - lon1)
+    a = sin(dphi/2)**2 + cos(phi1)*cos(phi2)*sin(dlambda/2)**2
+    return 2*R*asin(sqrt(a))
 
-# --- I/O ---
+# JSON IO
 def read_json(path: Path, default=None):
     if not path.exists():
         return default if default is not None else {}
@@ -36,7 +38,7 @@ def write_json(path: Path, obj):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
 
-# --- Taxonomy ---
+# Taxonomy (fallback)
 def load_taxonomy():
     cats = read_json(DATA_DIR / "categories.json", default=None)
     if not cats:
@@ -47,7 +49,7 @@ def load_taxonomy():
         }
     return cats
 
-# --- Recon name normalizer ---
+# Name normalizer for reconciliation
 def norm_name(s: str) -> str:
     s = unicodedata.normalize("NFKC", (s or "").strip().lower())
     s = re.sub(r"[’'`´]", "'", s)
