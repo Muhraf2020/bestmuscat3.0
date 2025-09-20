@@ -1,0 +1,58 @@
+name: Data Pipeline (BestMuscat - OTM+OSM+Wikidata)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 20 * * *'   # 20:15 UTC daily (~00:15 Muscat)
+
+permissions:
+  contents: write
+
+jobs:
+  build-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ingest – OpenTripMap
+        env:
+          OPENTRIPMAP_API_KEY: ${{ secrets.OPENTRIPMAP_API_KEY }}
+        run: |
+          python scripts/ingest/fetch_opentripmap.py
+
+      - name: Ingest – Wikidata
+        run: |
+          python scripts/ingest/fetch_wikidata.py
+
+      - name: Ingest – OpenStreetMap (Overpass)
+        run: |
+          python scripts/ingest/fetch_osm.py
+
+      - name: Build – Reconcile & Merge
+        run: |
+          python scripts/build/reconcile_merge.py
+
+      - name: Build – Photos (Wikimedia/Openverse first)
+        run: |
+          python scripts/build/fetch_photos_from_sources.py
+
+      - name: QA Checks
+        run: |
+          python scripts/build/qa_checks.py
+
+      - name: Commit & Push if changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(data): nightly ingest + photos + QA (OTM+OSM+Wikidata)"
+          branch: ${{ github.ref_name }}
