@@ -6,16 +6,31 @@ OUTDIR = ROOT / "data/raw/opentripmap"
 OUTDIR.mkdir(parents=True, exist_ok=True)
 
 API_KEY = os.getenv("OPENTRIPMAP_API_KEY")
-BBOX = (58.20, 23.45, 58.80, 23.80)  # lon_min, lat_min, lon_max, lat_max
 
-CATEGORIES = {
-    "hotel": ["other_hotels", "accomodations"],
-    "restaurant": ["restaurants"],
-    "mall": ["shops", "shopping_malls"]
-}
+# Muscat-ish bbox: lon_min, lat_min, lon_max, lat_max
+BBOX = (58.20, 23.45, 58.80, 23.80)
 
 BASE_BBOX = "https://api.opentripmap.com/0.1/en/places/bbox"
 BASE_XID  = "https://api.opentripmap.com/0.1/en/places/xid/"
+
+# IMPORTANT: OTM 'kinds' taxonomy is finicky. We try candidates in order.
+# If an option returns 400, we'll fall back to the next one automatically.
+
+KIND_CANDIDATES = {
+    "restaurant": [
+        ["restaurants"],            # most commonly accepted
+        ["foods"],                  # broader fallback
+        ["catering"],               # last resort
+    ],
+    "hotel": [
+        ["accomodations"],          # spelling per OTM taxonomy (one 'm')
+        ["hotels"],                 # sometimes exists
+    ],
+    "mall": [
+        ["shopping_mall"],          # singular is more likely than plural
+        ["shops"],                  # broad fallback
+    ],
+}
 
 def fetch_bbox(kinds, offset=0, limit=500):
     params = {
@@ -28,61 +43,89 @@ def fetch_bbox(kinds, offset=0, limit=500):
         "offset": offset,
     }
     r = requests.get(BASE_BBOX, params=params, timeout=30)
+    # Let the caller inspect status to try fallbacks on 400
+    if r.status_code == 400:
+        return None, 400
     r.raise_for_status()
-    return r.json()
+    return r.json(), r.status_code
 
 def fetch_detail(xid):
     r = requests.get(BASE_XID + xid, params={"apikey": API_KEY}, timeout=30)
     r.raise_for_status()
     return r.json()
 
-def main():
-    all_items = []
-    for cat, kinds in CATEGORIES.items():
+def pull_category(cat_name, kind_options):
+    """Try several 'kinds' options until one works (not 400).
+       Returns a list of simplified OTM detail dicts or [] if none work."""
+    collected = []
+    worked = False
+    for kinds in kind_options:
+        print(f"[OTM] Trying category={cat_name} kinds={kinds} ...")
         offset = 0
+        batch_count = 0
         while True:
-            batch = fetch_bbox(kinds, offset)
-            if not batch:
+            data, code = fetch_bbox(kinds, offset, limit=200)
+            if code == 400:
+                print(f"[OTM] kinds={kinds} not accepted (400). Trying next candidate.")
+                collected = []
+                break  # try next kinds candidate
+            results = data or []
+            if not results:
+                if batch_count == 0:
+                    print(f"[OTM] kinds={kinds} yielded 0 results.")
                 break
-            for x in batch:
-                x["_bm_category"] = cat
-            all_items.extend(batch)
-            offset += len(batch)
-            time.sleep(0.3)
-
-    # Fetch details for each xid to enrich address/website
+            # annotate category
+            for x in results:
+                x["_bm_category"] = cat_name
+            collected.extend(results)
+            batch_count += len(results)
+            offset += len(results)
+            time.sleep(0.25)
+        if collected:
+            worked = True
+            print(f"[OTM] Using kinds={kinds} for category={cat_name} (fetched {len(collected)}).")
+            break
+    if not worked:
+        print(f"[OTM] WARNING: No valid kinds for category={cat_name}. Skipping OTM for this category.")
+        return []
+    # fetch details to enrich with address/website
     detailed = []
-    for x in all_items:
+    for x in collected:
         xid = x.get("xid")
         if not xid:
             continue
         try:
             d = fetch_detail(xid)
-            # map to a simpler structure and keep category + point
-            lat, lon = None, None
-            if "point" in d:
-                lat, lon = d["point"].get("lat"), d["point"].get("lon")
+            lat = (d.get("point") or {}).get("lat")
+            lon = (d.get("point") or {}).get("lon")
             addr = d.get("address") or {}
             address = ", ".join(filter(None, [
                 addr.get("house_number"),
                 addr.get("road"),
                 addr.get("suburb"),
                 addr.get("city"),
-                addr.get("postcode")
+                addr.get("postcode"),
             ])) or None
             detailed.append({
                 "xid": xid,
                 "name": d.get("name") or x.get("name"),
-                "_bm_category": x.get("_bm_category"),
+                "_bm_category": cat_name,
                 "location": {"lat": lat, "lon": lon, "address": address},
                 "contacts": {"website": d.get("url")},
             })
-            time.sleep(0.2)
+            time.sleep(0.15)
         except Exception:
             continue
+    return detailed
+
+def main():
+    all_items = []
+    for cat, options in KIND_CANDIDATES.items():
+        all_items.extend(pull_category(cat, options))
 
     with open(OUTDIR/"places.json", "w", encoding="utf-8") as f:
-        json.dump(detailed, f, ensure_ascii=False, indent=2)
+        json.dump(all_items, f, ensure_ascii=False, indent=2)
+    print(f"[OTM] Wrote {len(all_items)} detailed records to {OUTDIR/'places.json'}")
 
 if __name__ == "__main__":
     main()
