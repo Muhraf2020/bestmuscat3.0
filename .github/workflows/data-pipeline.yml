@@ -25,15 +25,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Ingest – OpenStreetMap (Overpass)
+        run: |
+          python scripts/ingest/fetch_osm.py
+
       - name: Ingest – OpenTripMap
         env:
           OPENTRIPMAP_API_KEY: ${{ secrets.OPENTRIPMAP_API_KEY }}
         run: |
           python scripts/ingest/fetch_opentripmap.py
-
-      - name: Ingest – OpenStreetMap (Overpass)
-        run: |
-          python scripts/ingest/fetch_osm.py
 
       - name: Ingest – Wikidata
         run: |
@@ -41,17 +41,17 @@ jobs:
 
       - name: Build – Reconcile & Merge
         run: |
-          python scripts/build/reconcile_merge.py
+          python -m scripts.build.reconcile_merge
 
       - name: Build – Photos (Wikimedia/Openverse first)
         run: |
-          python scripts/build/fetch_photos_from_sources.py
+          python -m scripts.build.fetch_photos_from_sources
 
       - name: QA Checks
         env:
           ALLOW_QA_SOFT_FAIL: "1"   # TEMP: let first runs pass
         run: |
-          python scripts/build/qa_checks.py
+          python -m scripts.build.qa_checks
 
       - name: Commit & Push if changes
         uses: stefanzweifel/git-auto-commit-action@v5
