@@ -1,48 +1,17 @@
-import json
+import sys, json
 from pathlib import Path
 from rapidfuzz import fuzz
-from dateutil import parser as dt  # kept for future enrichment
 
-from .utils import (
+# Make 'scripts/build' importable to use utils.py
+HERE = Path(__file__).resolve().parent
+sys.path.append(str(HERE))
+from utils import (
     DATA_DIR, RAW_DIR, write_json, read_json,
     slugify, haversine_m, norm_name, load_taxonomy
 )
 
 OUT = DATA_DIR / "places.json"
 TARGET_CATEGORIES = {"hotel", "restaurant", "mall"}
-
-def extract_fsq():
-    path = RAW_DIR / "foursquare/places.json"
-    items = read_json(path, default=[]) or []
-    mapped = []
-    for r in items:
-        name = r.get("name")
-        geoc = r.get("geocodes", {}).get("main", {})
-        lat, lon = geoc.get("latitude"), geoc.get("longitude")
-        cat = r.get("_bm_category")
-        if not name or not lat or not lon or cat not in TARGET_CATEGORIES:
-            continue
-        mapped.append({
-            "name": name,
-            "category": cat,
-            "location": {
-                "lat": lat,
-                "lon": lon,
-                "address": ", ".join(filter(None, [
-                    (r.get("location", {}) or {}).get("address"),
-                    (r.get("location", {}) or {}).get("locality"),
-                ]))
-            },
-            "contacts": {
-                "phone": r.get("tel"),
-                "website": (r.get("website") or (r.get("link") if isinstance(r.get("link"), str) else None))
-            },
-            "open_hours": None,
-            "price_tier": r.get("price"),
-            "rating": {"score": None, "count": r.get("stats", {}).get("total_ratings")},
-            "sources": {"foursquare": {"id": r.get("fsq_id")}}
-        })
-    return mapped
 
 def extract_otm():
     path = RAW_DIR / "opentripmap/places.json"
@@ -52,7 +21,7 @@ def extract_otm():
         name = r.get("name") or r.get("name_en")
         lat, lon = r.get("point", {}).get("lat"), r.get("point", {}).get("lon")
         cat = r.get("_bm_category")
-        if not name or not lat or not lon or cat not in TARGET_CATEGORIES:
+        if not name or lat is None or lon is None or cat not in TARGET_CATEGORIES:
             continue
         mapped.append({
             "name": name,
@@ -63,6 +32,29 @@ def extract_otm():
             "price_tier": None,
             "rating": {"score": None, "count": None},
             "sources": {"opentripmap": {"id": r.get("xid")}}
+        })
+    return mapped
+
+def extract_osm():
+    path = RAW_DIR / "osm/places.json"
+    items = read_json(path, default=[]) or []
+    mapped = []
+    for r in items:
+        name = r.get("name")
+        lat, lon = r.get("lat"), r.get("lon")
+        cat = r.get("_bm_category")
+        if not name or lat is None or lon is None or cat not in TARGET_CATEGORIES:
+            continue
+        address = r.get("address") or r.get("street")
+        mapped.append({
+            "name": name,
+            "category": cat,
+            "location": {"lat": lat, "lon": lon, "address": address},
+            "contacts": {"phone": r.get("phone"), "website": r.get("website")},
+            "open_hours": None,
+            "price_tier": None,
+            "rating": {"score": None, "count": None},
+            "sources": {"osm": {"type": r.get("osm_type"), "id": r.get("osm_id")}}
         })
     return mapped
 
@@ -96,12 +88,12 @@ def extract_wd():
     return mapped
 
 def reconcile_and_merge():
-    _ = load_taxonomy()  # ready for future use
-    fsq = extract_fsq()
+    _ = load_taxonomy()
     otm = extract_otm()
+    osm = extract_osm()
     wd  = extract_wd()
 
-    merged = list(fsq)  # seed with FSQ
+    merged = []  # seed empty
 
     def try_merge(target, candidate):
         n1, n2 = norm_name(target["name"]), norm_name(candidate["name"])
@@ -110,6 +102,7 @@ def reconcile_and_merge():
                         candidate["location"]["lat"], candidate["location"]["lon"])
         if name_sim >= 0.85 and d <= 200:
             target["contacts"]["website"] = target["contacts"].get("website") or candidate.get("contacts", {}).get("website")
+            target["contacts"]["phone"] = target["contacts"].get("phone") or candidate.get("contacts", {}).get("phone")
             target["location"]["address"] = target["location"].get("address") or candidate.get("location", {}).get("address")
             target["price_tier"] = target.get("price_tier") or candidate.get("price_tier")
             target["rating"] = target.get("rating") or candidate.get("rating")
@@ -121,14 +114,18 @@ def reconcile_and_merge():
             return True
         return False
 
-    for c in otm:
-        for t in merged:
-            if try_merge(t, c):
-                break
-        else:
-            merged.append(c)
+    def merge_list(source_list):
+        for c in source_list:
+            for t in merged:
+                if try_merge(t, c):
+                    break
+            else:
+                merged.append(c)
 
-    # Wikidata enrich only (do not append new POIs)
+    # Merge OTM then OSM; enrich with WD
+    merge_list(otm)
+    merge_list(osm)
+
     for c in wd:
         best_i, best_score = None, 0
         for i, t in enumerate(merged):
@@ -160,13 +157,22 @@ def reconcile_and_merge():
                 p["category"] = cat
             if p.get("category") not in TARGET_CATEGORIES:
                 continue
+
         slug = slugify(p["name"])[:80]
+
+        # Ensure both lon and lng for frontend compatibility
+        loc_in = p["location"] or {}
+        lat = loc_in.get("lat")
+        lon = loc_in.get("lon")
+        address = loc_in.get("address")
+        location_out = {"lat": lat, "lon": lon, "lng": lon, "address": address}
+
         canonical.append({
             "id": f"bestmuscat:{p['category']}:{slug}",
             "name": p["name"],
             "category": p["category"],
             "subcategories": [],
-            "location": p["location"],
+            "location": location_out,
             "contacts": p.get("contacts", {}),
             "open_hours": p.get("open_hours"),
             "price_tier": p.get("price_tier"),
