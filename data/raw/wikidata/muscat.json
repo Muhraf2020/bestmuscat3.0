@@ -1,0 +1,30 @@
+{
+  "head": {
+    "vars": [
+      "item",
+      "itemLabel",
+      "coord",
+      "website",
+      "image"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q842633"
+        },
+        "image": {
+          "type": "uri",
+          "value": "http://commons.wikimedia.org/wiki/Special:FilePath/Steph%20Mcmahon.jpg"
+        },
+        "itemLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Stephanie McMahon"
+        }
+      }
+    ]
+  }
+}
