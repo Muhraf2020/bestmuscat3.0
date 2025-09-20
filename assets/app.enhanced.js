@@ -65,8 +65,8 @@
     const root = document.querySelector('#place-details') || document.querySelector('[data-place-details]') || document.querySelector('main') || document.body;
     const wrap = document.createElement('section');
     wrap.className = 'bm-extras';
-    const openLabel = isOpenNow(place.hours) ? 'Open' : 'Closed';
-    const status = `<span class="status badge">${openLabel}</span>`;
+    const openLabel = place.hours ? (isOpenNow(place.hours) ? 'Open' : 'Closed') : '—';
+    const status = openLabel !== '—' ? `<span class="status badge">${openLabel}</span>` : '';
     const badges = (place.badges||[]).map(b=>`<span class="badge">${b}</span>`).join(' ');
     const dishes = (place.dishes||[]).map(d=>`<li>${d}</li>`).join('');
     const amns = (place.amenities||[]).map(a=>`<li>${a}</li>`).join('');
