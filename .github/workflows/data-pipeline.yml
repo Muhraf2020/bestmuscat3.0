@@ -28,6 +28,7 @@ jobs:
       - name: Ingest – OpenTripMap
         env:
           OPENTRIPMAP_API_KEY: ${{ secrets.OPENTRIPMAP_API_KEY }}
+        - name: Ingest – OSM (Overpass)
         run: |
           python scripts/ingest/fetch_opentripmap.py
 
