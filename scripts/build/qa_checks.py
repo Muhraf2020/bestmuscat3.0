@@ -1,5 +1,12 @@
-import csv, sys
-from .utils import DATA_DIR, read_json
+import sys, csv
+from pathlib import Path
+
+# local import
+import sys as _sys
+from pathlib import Path as _Path
+HERE = _Path(__file__).resolve().parent
+_sys.path.append(str(HERE))
+from utils import DATA_DIR, read_json
 
 MAX_MISSING_ADDR_PCT = 0.20
 MAX_NO_PHOTO_PCT = 0.40
