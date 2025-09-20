@@ -86,6 +86,21 @@
         return;
       }
       const tool = tools.find(t => t.slug === slug || t.id === slug);
+      // --- Normalize for tools.json (prevents crashes when fields are missing) ---
+tool.actions     = tool.actions     || {};
+tool.about       = Array.isArray(tool.about)       ? tool.about       : [];
+tool.cuisines    = Array.isArray(tool.cuisines)    ? tool.cuisines    : [];
+tool.faqs        = Array.isArray(tool.faqs)        ? tool.faqs        : [];
+tool.locations   = Array.isArray(tool.locations)   ? tool.locations   : [];
+tool.subscores   = tool.subscores || null;   // keep null so the "if (tool.subscores)" checks work
+tool.menu        = tool.menu || null;        // your code already guards menu sections
+tool.price       = tool.price || tool.pricing || ""; // ensure a price string exists for the pill
+tool.address_full= tool.address_full || "";  // used in header
+tool.badges      = Array.isArray(tool.badges) ? tool.badges : [];
+tool.gallery     = Array.isArray(tool.gallery) ? tool.gallery : [];
+tool.rating_overall = Number.isFinite(tool.rating_overall) ? tool.rating_overall : null;
+// --------------------------------------------------------------------------
+
       if (!tool) {
         wrap.innerHTML = `<div class="empty">Place not found. <a href="index.html">Back</a>.</div>`;
         return;
