@@ -101,7 +101,7 @@
   function enhanceDetail(){
     const q = parseQuery();
     if (!q.slug) return;
-    loadJSON('data/places.json').then(rows => {
+    loadJSON('data/tools.json').then(rows => {
       const place = rows.find(p => p.slug === q.slug);
       if (!place) return;
       injectJSONLD(place);
