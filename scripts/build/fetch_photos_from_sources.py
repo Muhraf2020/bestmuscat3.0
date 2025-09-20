@@ -1,14 +1,17 @@
-import os, json, requests
+import sys, os, json, requests
 from io import BytesIO
 from PIL import Image
 from pathlib import Path
 
-from .utils import DATA_DIR, MEDIA_DIR, read_json, write_json
+# Import utils from scripts/build
+HERE = Path(__file__).resolve().parent
+sys.path.append(str(HERE))
+from utils import DATA_DIR, MEDIA_DIR, read_json, write_json
 
 OPENVERSE_ENDPOINT = "https://api.openverse.org/v1/images/"
 
 def _download_image(url: str) -> Image.Image:
-    r = requests.get(url, timeout=60)
+    r = requests.get(url, timeout=60, headers={"User-Agent":"bestmuscat/1.0"})
     r.raise_for_status()
     img = Image.open(BytesIO(r.content))
     if img.mode not in ("RGB", "RGBA"):
@@ -45,7 +48,7 @@ def add_photos():
         img = None
         at_meta = None
 
-        # 1) Wikimedia via Wikidata image URL
+        # 1) Wikimedia (if present via Wikidata)
         wm = p.get("wikimedia_image_url")
         if wm:
             try:
@@ -58,7 +61,7 @@ def add_photos():
             except Exception:
                 img = None
 
-        # 2) Openverse fallback (city+name+category)
+        # 2) Openverse fallback (query by name + city + category)
         if img is None:
             q = f"{p['name']} Muscat {p['category']}"
             res = _search_openverse(q)
