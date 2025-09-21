@@ -86,26 +86,46 @@
         return;
       }
       const tool = tools.find(t => t.slug === slug || t.id === slug);
-      // --- Normalize for tools.json (fallbacks so the template doesn't break) ---
-tool.actions       = tool.actions || {};
-tool.about         = Array.isArray(tool.about)       ? tool.about       : [];
-tool.cuisines      = Array.isArray(tool.cuisines)    ? tool.cuisines    : [];
-tool.faqs          = Array.isArray(tool.faqs)        ? tool.faqs        : [];
-tool.gallery       = Array.isArray(tool.gallery)     ? tool.gallery     : [];
-tool.badges        = Array.isArray(tool.badges)      ? tool.badges      : [];
-tool.subscores     = tool.subscores || null;
-tool.menu          = tool.menu || null;
-tool.price         = tool.price || tool.pricing || "";
-tool.address_full  = tool.address_full || tool.tagline || ""; // <— use tagline as address if needed
-// derive basic website action from url
-if (!tool.actions.website && tool.url && tool.url !== "#") tool.actions.website = tool.url;
-// synthesize a single location from address if locations are missing
-if (!Array.isArray(tool.locations) || tool.locations.length === 0) {
-  tool.locations = tool.address_full ? [{ address: tool.address_full }] : [];
-}
-// guard hours (some templates check it implicitly)
-tool.hours = tool.hours || null;
-// --------------------------------------------------------------------------
+
+      // --------------------------------------------------------------------------
+      const tool = tools.find(t => t.slug === slug || t.id === slug);
+
+      // 1) Guard FIRST — if not found, stop and show a friendly message
+      if (!tool) {
+        wrap.innerHTML = `<div class="empty">Could not find <code>${esc(slug || '')}</code> in <code>data/tools.json</code>. <a href="index.html">Back</a>.</div>`;
+        return;
+      }
+
+      // 2) Normalize AFTER we know `tool` exists
+      tool.actions      = tool.actions || {};
+      tool.about        = Array.isArray(tool.about) ? tool.about : (tool.about ? [tool.about] : []);
+      tool.cuisines     = Array.isArray(tool.cuisines) ? tool.cuisines : [];
+      tool.faqs         = Array.isArray(tool.faqs) ? tool.faqs : [];
+      tool.gallery      = Array.isArray(tool.gallery) ? tool.gallery : [];
+      tool.badges       = Array.isArray(tool.badges) ? tool.badges : [];
+      tool.subscores    = tool.subscores || null;
+      tool.menu         = tool.menu || null;
+      tool.price        = tool.price || tool.pricing || "";
+      tool.address_full = tool.address_full || tool.tagline || ""; // fallback
+      
+      // derive basic website action from url
+      if (!tool.actions.website && tool.url && tool.url !== "#") {
+        tool.actions.website = tool.url;
+      }
+      
+      // 3) Bridge locations[] → location {} so the template renders Location + sticky link
+      if (!Array.isArray(tool.locations) || tool.locations.length === 0) {
+        tool.locations = tool.address_full ? [{ address: tool.address_full }] : [];
+      }
+      if (!tool.location) {
+        tool.location = tool.locations[0] || null;
+      }
+      
+      // 4) Guard hours (prevents false "Closed" elsewhere)
+      tool.hours = tool.hours || null;
+      
+      // --------------------------------------------------------------------------
+
 
 
       if (!tool) {
@@ -218,8 +238,16 @@ tool.hours = tool.hours || null;
       // Opening hours section
       let hoursHTML = '';
       if (tool.hours) {
-        const rows = Object.keys(tool.hours).map(day => `<tr><td>${esc(day)}</td><td>${esc(tool.hours[day][0])}</td><td>${esc(tool.hours[day][1])}</td></tr>`).join('');
-        hoursHTML = `<section id="hours" class="section"><h2>${esc(tool.name)} Opening Hours</h2><table class="hours-table"><tr><th>Day</th><th>Opening</th><th>Closing</th></tr>${rows}</table></section>`;
+
+      const rows = Object.keys(tool.hours).map(day => {
+      const v = tool.hours[day];
+      const open  = Array.isArray(v) ? v[0] : (v && v.open ? v.open : '');
+      const close = Array.isArray(v) ? v[1] : (v && v.close ? v.close : '');
+      return `<tr><td>${esc(day)}</td><td>${esc(open)}</td><td>${esc(close)}</td></tr>`;
+      }).join('');
+
+        
+      hoursHTML = `<section id="hours" class="section"><h2>${esc(tool.name)} Opening Hours</h2><table class="hours-table"><tr><th>Day</th><th>Opening</th><th>Closing</th></tr>${rows}</table></section>`;
       }
 
       // Menu section (restaurants only; renders if data exists)
