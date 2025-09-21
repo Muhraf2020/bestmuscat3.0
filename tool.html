@@ -123,6 +123,31 @@
       
       // 4) Guard hours (prevents false "Closed" elsewhere)
       tool.hours = tool.hours || null;
+
+      // 5) Synthesize `attributes` so the Details section can render from common fields
+        tool.attributes = tool.attributes || {};
+        if (!tool.attributes.category && Array.isArray(tool.categories) && tool.categories.length) {
+          tool.attributes.category = tool.categories;
+        }
+        if (!tool.attributes.cuisine && Array.isArray(tool.cuisines) && tool.cuisines.length) {
+          tool.attributes.cuisine = tool.cuisines;
+        }
+        if (!tool.attributes.meals && Array.isArray(tool.meals) && tool.meals.length) {
+          tool.attributes.meals = tool.meals;
+        }
+        if (!tool.attributes.dishes && Array.isArray(tool.dishes) && tool.dishes.length) {
+          tool.attributes.dishes = tool.dishes;
+        }
+        if (!tool.attributes.amenities && Array.isArray(tool.amenities) && tool.amenities.length) {
+          tool.attributes.amenities = tool.amenities;
+        }
+        
+        // Optional: derive a simple price_range from pricing/price symbols like "$$"
+        if (!tool.attributes.price_range && (tool.pricing || tool.price)) {
+          const symbol = tool.pricing || tool.price;
+          tool.attributes.price_range = { symbol };
+        }
+
       
       // --------------------------------------------------------------------------
 
@@ -240,11 +265,12 @@
       if (tool.hours) {
 
       const rows = Object.keys(tool.hours).map(day => {
-      const v = tool.hours[day];
-      const open  = Array.isArray(v) ? v[0] : (v && v.open ? v.open : '');
-      const close = Array.isArray(v) ? v[1] : (v && v.close ? v.close : '');
-      return `<tr><td>${esc(day)}</td><td>${esc(open)}</td><td>${esc(close)}</td></tr>`;
+        const v = tool.hours[day];
+        const open  = Array.isArray(v) ? v[0] : (v && v.open ? v.open : '');
+        const close = Array.isArray(v) ? v[1] : (v && v.close ? v.close : '');
+        return `<tr><td>${esc(day)}</td><td>${esc(open)}</td><td>${esc(close)}</td></tr>`;
       }).join('');
+
 
         
       hoursHTML = `<section id="hours" class="section"><h2>${esc(tool.name)} Opening Hours</h2><table class="hours-table"><tr><th>Day</th><th>Opening</th><th>Closing</th></tr>${rows}</table></section>`;
