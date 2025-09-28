@@ -10948,6 +10948,23 @@
     "price": ""
   },
   {
+    "id": "fndq-lmtr",
+    "slug": "fndq-lmtr",
+    "name": "فندق المطار",
+    "url": "#",
+    "tagline": "Hotels in Muscat",
+    "description": "",
+    "pricing": "free",
+    "categories": [
+      "Hotels"
+    ],
+    "tags": [],
+    "logo": "",
+    "image": "assets/images/hotels.png",
+    "short_description": "Hotels in Muscat",
+    "price": ""
+  },
+  {
     "id": "sheraton-oman",
     "slug": "sheraton-oman",
     "name": "Sheraton Oman",

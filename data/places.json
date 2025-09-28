@@ -18161,6 +18161,32 @@
     "status": "active"
   },
   {
+    "id": "bestmuscat:hotel:fndq-lmtr",
+    "name": "فندق المطار",
+    "category": "hotel",
+    "subcategories": [],
+    "location": {
+      "lat": 23.586784,
+      "lon": 58.3578424,
+      "address": null
+    },
+    "contacts": {
+      "website": null
+    },
+    "open_hours": null,
+    "price_tier": null,
+    "rating": {},
+    "amenities": [],
+    "photos": [],
+    "wikimedia_image_url": null,
+    "sources": {
+      "osm": {
+        "id": "node/13176397201"
+      }
+    },
+    "status": "active"
+  },
+  {
     "id": "bestmuscat:hotel:sheraton-oman",
     "name": "Sheraton Oman",
     "category": "hotel",

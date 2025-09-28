@@ -11592,6 +11592,24 @@
     }
   },
   {
+    "id": "osm:node:13176397201",
+    "name": "فندق المطار",
+    "category": "hotel",
+    "location": {
+      "lat": 23.586784,
+      "lon": 58.3578424,
+      "address": null
+    },
+    "contacts": {
+      "website": null
+    },
+    "sources": {
+      "osm": {
+        "id": "node/13176397201"
+      }
+    }
+  },
+  {
     "id": "osm:way:35840460",
     "name": "Sheraton Oman",
     "category": "hotel",
