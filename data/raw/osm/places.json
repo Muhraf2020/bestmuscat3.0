@@ -11610,6 +11610,24 @@
     }
   },
   {
+    "id": "osm:node:13197207201",
+    "name": "فندق ست رجيس الموج",
+    "category": "hotel",
+    "location": {
+      "lat": 23.6188118,
+      "lon": 58.2840372,
+      "address": null
+    },
+    "contacts": {
+      "website": null
+    },
+    "sources": {
+      "osm": {
+        "id": "node/13197207201"
+      }
+    }
+  },
+  {
     "id": "osm:way:35840460",
     "name": "Sheraton Oman",
     "category": "hotel",
